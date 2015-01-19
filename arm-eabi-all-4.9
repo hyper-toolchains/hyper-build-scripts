@@ -34,7 +34,7 @@ export TARGET_CPU_VARIANT=krait
 export TARGET_USE_QCOM_BIONIC_OPTIMIZATION=true
 export DATE=`date +%Y-%m-%d:%H:%M:%S`
 JOBS="$(cat /proc/cpuinfo | grep -c processor)";
-MAKE_FLAGS=-j"$JOBS";
+MAKE_FLAGS=-j"$JOBS" -s;
 
 fix_perms(){
 # Fix permission errors
@@ -87,7 +87,7 @@ build_linaro(){
 	./configure $CLOOG_PREFIX;
 
 	make $MAKE_FLAGS;
-	make install;
+	make install -s;
 
 	# cleanup
 	make $MAKE_FLAGS clean && make $MAKE_FLAGS distclean;
@@ -108,7 +108,7 @@ build_linaro(){
 	./configure $ISL_PREFIX;
 
 	make $MAKE_FLAGS;
-	make install;
+	make install -s;
 
 	# cleanup
 	make $MAKE_FLAGS clean && make $MAKE_FLAGS distclean;
@@ -132,7 +132,7 @@ build_linaro(){
 	make $MAKE_FLAGS;
 
 	#Install the toolchain (twice)
-	make install && make install;
+	make install -s && make install -s;
 }
 
 upload_linaro(){
@@ -150,16 +150,11 @@ build_linaromod(){
 
 	# Build LinaroMod
 	cd ~/sm/build-scripts
+	echo "Building LinaroMod"
 
 	# Build PATH
 	export BUILD_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-
-	# Try to parallelize the build for faster performance.
-	export JOBS="$(cat /proc/cpuinfo | grep -c processor)";
-
-	# Determine Make flags
-	export MAKE_FLAGS=-j"$JOBS";
-
+	
 	# Make a clean build
 	if [ -e Makefile ];
 	then
@@ -207,7 +202,7 @@ build_linaromod(){
 	cd ../../cloog/cloog-$SET_CLOOG_VERSION && ./configure $CLOOG_PREFIX --with-isl=bundled --with-osl=bundled --with-gmp=system;
 
 	make $MAKE_FLAGS;
-	make install;
+	make install -s;
 
 	# cleanup
 	make $MAKE_FLAGS clean;
@@ -242,7 +237,7 @@ build_linaromod(){
    	   make $MAKE_FLAGS;
 
    	 # Install the toolchain (twice)
-    	   make install && make install;
+    	   make install -s && make install -s;
 
    	 export SET_TARGET_BUILD=GCC;
 
@@ -261,6 +256,7 @@ build_linaromod(){
 }
 
 upload_linaromod(){
+echo "Uploading LinaroMod"
 # Add README
 cd $PREFIX_PATH;
 touch README.mkdn;
@@ -274,9 +270,11 @@ git init && git add -A && git commit -m "Update build to $DATE" -s && git push -
 
 build_sabernaro(){
 #Copy files for SaberNaro
+echo "Copying files for SaberNaro"
 cp -R ~/sm/gcc/gcc-SaberMod ~/linaro/gcc/;
 
 # Build SaberNaro
+echo "Building SaberNaro"
 cd ~/linaro/build;
 
 # Make a clean build
@@ -315,7 +313,7 @@ cd ../cloog/cloog-current;
 ./configure $CLOOG_PREFIX;
 
 make $MAKE_FLAGS;
-make install;
+make install -s ;
 
 # cleanup
 make $MAKE_FLAGS clean && make $MAKE_FLAGS distclean;
@@ -336,7 +334,7 @@ cd ../../../isl/isl-current;
 ./configure $ISL_PREFIX;
 
 make $MAKE_FLAGS;
-make install;
+make install -s;
 
 # cleanup
 make $MAKE_FLAGS clean && make $MAKE_FLAGS distclean;
@@ -360,10 +358,11 @@ cd ../../build;
 make $MAKE_FLAGS;
 
 #Install the toolchain (twice)
-make install && make install;
+make install -s && make install -s;
 }
 
 upload_sabernaro(){
+echo "Uploading SaberNaro"
 # Add README
 cd $PREFIX_PATH;
 touch README.mkdn;
@@ -376,6 +375,7 @@ git init && git add -A && git commit -m "Update build to $DATE" -s && git push -
 }
 
 cleanup(){
+"Clean up time!"
 #Clean Up Time!
 rm -rf ~/sm/gcc/gcc-UBER;
 rm -rf ~/linaro/gcc/gcc-SaberMod;
