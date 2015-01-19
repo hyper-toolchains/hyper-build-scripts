@@ -32,22 +32,6 @@ export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quo
 export target_cpu=arm
 export TARGET_CPU_VARIANT=krait
 export TARGET_USE_QCOM_BIONIC_OPTIMIZATION=true
-export PREFIX=--prefix=$PREFIX_PATH;
-export SYSROOT_SRC_PATH=../sysroot/arch-arm;
-export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
-export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH;
-export CLOOG_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
-export CLOOG_PREFIX=--prefix=$CLOOG_PREFIX_PATH;
-export ISL_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
-export ISL_PREFIX=--prefix=$ISL_PREFIX_PATH;
-export SYSROOT_LIB_PATH=$PREFIX_PATH/lib;
-export LD_LIBRARY_PATH=$SYSROOT_LIB_PATH;
-export LIBRARY_PATH=$SYSROOT_LIB_PATH;
-export BUILD_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-export GCC_INSTALLED=$PREFIX_PATH/bin/arm-eabi-gcc;
-export GMP_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-export CLOOG_INSTALLED=$SYSROOT_LIB_PATH/libcloog-isl.so.4
-export SET_TARGET_BUILD=CLOOG;
 export DATE=`date +%Y-%m-%d:%H:%M:%S`
 JOBS="$(cat /proc/cpuinfo | grep -c processor)";
 MAKE_FLAGS=-j"$JOBS";
@@ -57,9 +41,6 @@ sudo chmod -R 777 linaro;
 sudo chmod -R 777 linaro/.repo;
 sudo chmod -R 777 sm;
 sudo chmod -R 777 sm/.repo;
-
-# Build Linaro
-cd ~/linaro/build;
 
 # Make sure gcc is on the right remote branch Linaro 4.9
 cd ../gcc/gcc-UBER && rm -rf * && git reset --hard && git fetch uu linaro-4.9 && git checkout FETCH_HEAD && cd ../../build;
@@ -71,7 +52,8 @@ then
     make $MAKE_FLAGS distclean;
 fi;
 
-export PREFIX_PATH=~/uber_toolchain/linaro-arm-eabi-4.9;
+export PREFIX_PATH=~/hyper/Linaro-arm-eabi-4.9;
+export PREFIX=--prefix=$PREFIX_PATH;
 
 if [ -d "$PREFIX_PATH" ];
 then
@@ -83,7 +65,17 @@ fi;
 
 # sysroot
 cd ../sysroot && rm -rf * && git reset --hard && git fetch gh gcc-4.9 && git checkout FETCH_HEAD && cd ../build;
+export SYSROOT_SRC_PATH=../sysroot/arch-arm;
+export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
 cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
+export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH;
+
+
+# Build and install cloog and isl libraries into the toolchain sysroot environment.
+
+# CLOOG
+export CLOOG_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export CLOOG_PREFIX=--prefix=$CLOOG_PREFIX_PATH;
 
 cd ../cloog/cloog-current;
 ./configure $CLOOG_PREFIX;
@@ -101,6 +93,11 @@ git reset --hard;
 
 cd isl && git reset --hard;
 
+# ISL
+
+export ISL_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export ISL_PREFIX=--prefix=$ISL_PREFIX_PATH;
+
 cd ../../../isl/isl-current;
 ./configure $ISL_PREFIX;
 
@@ -115,20 +112,22 @@ rm -rf gitversion.h include/isl/stdint.h isl-uninstalled.pc isl-uninstalled.sh i
 
 git reset --hard;
 
+# make libs available for ld and cc
+export SYSROOT_LIB_PATH=$PREFIX_PATH/lib;
+export LD_LIBRARY_PATH=$SYSROOT_LIB_PATH;
+export LIBRARY_PATH=$SYSROOT_LIB_PATH;
+
 cd ../../build;
 
 #Build Configuration
-./configure $PREFIX $SYSROOT --target=arm-eabi --host=x86_64-linux-gnu --build=x86_64-linux-gnu --program-transform-name='s&^&arm-eabi-&' --with-gcc-version=UBER --with-pkgversion="TGM-Linaro-4.9.3_arm+graphite" --with-binutils-version=current --with-cloog-version=current --with-cloog-version=current --with-isl-version=current --with-gmp-version=current --with-mpfr-version=current --with-mpc-version=current --with-gdb-version=current --disable-docs --disable-nls --disable-option-checking --disable-bootstrap --quiet --enable-graphite=yes
+./configure $PREFIX $SYSROOT --target=arm-eabi --host=x86_64-linux-gnu --build=x86_64-linux-gnu --program-transform-name='s&^&arm-eabi-&' --with-gcc-version=UBER --with-pkgversion="UBER-Linaro-4.9.3_arm+graphite" --with-binutils-version=current --with-cloog-version=current --with-cloog-version=current --with-isl-version=current --with-gmp-version=current --with-mpfr-version=current --with-mpc-version=current --with-gdb-version=current --disable-docs --disable-nls --disable-option-checking --disable-bootstrap --quiet --enable-graphite=yes
 
 #Build the toolchain
-make $MAKE_FLAGS;
+all1=$(date +%s.%N)
+script -q ~/uber_toolchain/Linaro-4.9.log -c "make $MAKE_FLAGS;"
 
 #Install the toolchain (twice)
 make install && make install;
-
-# Upload Linaro to GitHub
-cd $PREFIX_PATH;
-git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/linaro-arm-eabi-4.9.git master;
 
 # Build SaberMod Next
 cd ~/sm/build-scripts
@@ -136,6 +135,8 @@ cd ~/sm/build-scripts
 # Make sure gcc is on the right remote branch 4.9.x
 cd ../gcc/gcc-SaberMod && rm -rf * && git reset --hard && git fetch sm $SET_GCC_VERSION && git checkout FETCH_HEAD && cd ../../build;
 
+# Build PATH
+export BUILD_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
 
 # Make a clean build
 if [ -e Makefile ];
@@ -150,7 +151,8 @@ then
     rm -rf gmp-gnu;
 fi;
 
-export PREFIX_PATH=~/tmp/arm-eabi-4.9;
+export PREFIX_PATH=~/hyper/SaberMod-arm-eabi-4.9;
+export PREFIX=--prefix=$PREFIX_PATH;
 
 if [ -d "$PREFIX_PATH" ];
 then
@@ -160,14 +162,24 @@ else
     mkdir -p $PREFIX_PATH;
 fi;
 
+export GCC_INSTALLED=$PREFIX_PATH/bin/arm-eabi-gcc;
+
 # sysroot
 cd ../sysroot && rm -rf * && git reset --hard && git fetch sm gcc-4.9 && git checkout FETCH_HEAD && cd $BUILD_PATH;
+export SYSROOT_SRC_PATH=../sysroot/arch-arm;
+export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
 cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
+export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH;
 
 # Build and install cloog, isl and osl libraries into the toolchain sysroot environment.
 
 # GMP
 cd ../gmp/gmp-gnu;
+export GMP_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+
+# CLOOG
+export CLOOG_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export CLOOG_PREFIX=--prefix=$CLOOG_PREFIX_PATH;
 
 # Cloog Build Configuration
 cd ../../cloog/cloog-$SET_CLOOG_VERSION && ./configure $CLOOG_PREFIX --with-isl=bundled --with-osl=bundled --with-gmp=system;
@@ -183,6 +195,13 @@ make $MAKE_FLAGS distclean;
 rm -rf cloog-isl-uninstalled.pc cloog-isl-uninstalled.sh cloog-isl.pc cloog-isl.pc.in doc/gitversion.texi version.h isl/gitversion.h isl/include/isl/stdint.h isl/isl-uninstalled.pc isl/isl-uninstalled.sh isl/isl.pc isl/isl.pc.in;
 
 git reset --hard;
+
+# make libs available for ld
+export SYSROOT_LIB_PATH=$SYSROOT_DEST_PATH/usr/lib;
+export LD_LIBRARY_PATH=$SYSROOT_LIB_PATH;
+
+export CLOOG_INSTALLED=$SYSROOT_LIB_PATH/libcloog-isl.so.4
+export SET_TARGET_BUILD=CLOOG;
 
 cd $BUILD_PATH;
 
@@ -205,6 +224,8 @@ then
     make install && make install;
 fi;
 
+cd ../build-scripts;
+
 # Upload SaberMod to GitHub
 cd $PREFIX_PATH;
 git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/SaberMod-arm-eabi-4.9.git master;
@@ -216,6 +237,9 @@ cp -R ~/linaro/gdb/gdb-current ~/sm/gdb/gdb-linaro;
 
 # Build LinaroMod
 cd ~/sm/build-scripts
+
+# Build PATH
+export BUILD_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
 
 # Make a clean build
 if [ -e Makefile ];
@@ -231,6 +255,7 @@ then
 fi;
 
 export PREFIX_PATH=~/hyper/LinaroMod-arm-eabi-4.9;
+export PREFIX=--prefix=$PREFIX_PATH;
 
 if [ -d "$PREFIX_PATH" ];
 then
@@ -240,12 +265,24 @@ else
     mkdir -p $PREFIX_PATH;
 fi;
 
+export GCC_INSTALLED=$PREFIX_PATH/bin/arm-eabi-gcc;
+
 # sysroot
 cd ../sysroot && rm -rf * && git reset --hard && git fetch sm gcc-4.9 && git checkout FETCH_HEAD && cd $BUILD_PATH;
+export SYSROOT_SRC_PATH=../sysroot/arch-arm;
+export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
 cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
+export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH;
+
+# Build and install cloog, isl and osl libraries into the toolchain sysroot environment.
 
 # GMP
 cd ../gmp/gmp-gnu;
+export GMP_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+
+# CLOOG
+export CLOOG_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export CLOOG_PREFIX=--prefix=$CLOOG_PREFIX_PATH;
 
 # Cloog Build Configuration
 cd ../../cloog/cloog-$SET_CLOOG_VERSION && ./configure $CLOOG_PREFIX --with-isl=bundled --with-osl=bundled --with-gmp=system;
@@ -261,6 +298,13 @@ make $MAKE_FLAGS distclean;
 rm -rf cloog-isl-uninstalled.pc cloog-isl-uninstalled.sh cloog-isl.pc cloog-isl.pc.in doc/gitversion.texi version.h isl/gitversion.h isl/include/isl/stdint.h isl/isl-uninstalled.pc isl/isl-uninstalled.sh isl/isl.pc isl/isl.pc.in;
 
 git reset --hard;
+
+# make libs available for ld
+export SYSROOT_LIB_PATH=$SYSROOT_DEST_PATH/usr/lib;
+export LD_LIBRARY_PATH=$SYSROOT_LIB_PATH;
+
+export CLOOG_INSTALLED=$SYSROOT_LIB_PATH/libcloog-isl.so.4
+export SET_TARGET_BUILD=CLOOG;
 
 cd $BUILD_PATH;
 
@@ -307,6 +351,7 @@ then
 fi;
 
 export PREFIX_PATH=~/hyper/SaberNaro-arm-eabi-4.9;
+export PREFIX=--prefix=$PREFIX_PATH;
 
 if [ -d "$PREFIX_PATH" ];
 then
@@ -318,7 +363,17 @@ fi;
 
 # sysroot
 cd ../sysroot && rm -rf * && git reset --hard && git fetch gh gcc-4.9 && git checkout FETCH_HEAD && cd ../build;
+export SYSROOT_SRC_PATH=../sysroot/arch-arm;
+export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
 cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
+export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH;
+
+
+# Build and install cloog and isl libraries into the toolchain sysroot environment.
+
+# CLOOG
+export CLOOG_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export CLOOG_PREFIX=--prefix=$CLOOG_PREFIX_PATH;
 
 cd ../cloog/cloog-current;
 ./configure $CLOOG_PREFIX;
@@ -336,6 +391,11 @@ git reset --hard;
 
 cd isl && git reset --hard;
 
+# ISL
+
+export ISL_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export ISL_PREFIX=--prefix=$ISL_PREFIX_PATH;
+
 cd ../../../isl/isl-current;
 ./configure $ISL_PREFIX;
 
@@ -349,6 +409,11 @@ make $MAKE_FLAGS clean && make $MAKE_FLAGS distclean;
 rm -rf gitversion.h include/isl/stdint.h isl-uninstalled.pc isl-uninstalled.sh isl.pc isl.pc.in;
 
 git reset --hard;
+
+# make libs available for ld and cc
+export SYSROOT_LIB_PATH=$PREFIX_PATH/lib;
+export LD_LIBRARY_PATH=$SYSROOT_LIB_PATH;
+export LIBRARY_PATH=$SYSROOT_LIB_PATH;
 
 cd ../../build;
 
