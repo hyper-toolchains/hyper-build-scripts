@@ -52,6 +52,12 @@ export DATE=`date +%Y-%m-%d:%H:%M:%S`
 JOBS="$(cat /proc/cpuinfo | grep -c processor)";
 MAKE_FLAGS=-j"$JOBS";
 
+# Fix permission errors
+sudo chmod -R 777 linaro;
+sudo chmod -R 777 linaro/.repo;
+sudo chmod -R 777 sm;
+sudo chmod -R 777 sm/.repo;
+
 # Build Linaro
 cd ~/linaro/build;
 
