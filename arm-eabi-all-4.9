@@ -32,9 +32,10 @@ export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quo
 export target_cpu=arm
 export TARGET_CPU_VARIANT=krait
 export TARGET_USE_QCOM_BIONIC_OPTIMIZATION=true
-export DATE=`date +%Y-%m-%d:%H:%M:%S`
+export DATE=`date +%Y-%m-%d`
 JOBS="$(cat /proc/cpuinfo | grep -c processor)";
-MAKE_FLAGS="-j$JOBS -s";
+OPT_JOBS=$(bc <<< "($JOBS-1)*2")
+MAKE_FLAGS="-j$OPT_JOBS -s";
 
 fix_perms(){
 # Fix permission errors
@@ -142,75 +143,132 @@ upload_linaro(){
 }
 
 build_linaromod(){
-	#Copy files for LinaroMod
-	echo  "Copying files for LinaroMod";
-	cp -R ~/linaro/gcc/gcc-UBER ~/sm/gcc/;
-	cp -R ~/linaro/binutils/binutils-current ~/sm/binutils;
-	cp -R ~/linaro/gdb/gdb-current ~/sm/gdb;
+#Copy files for LinaroMod
+echo  "Copying files for LinaroMod";
+#cp -R ~/linaro/gcc/gcc-UBER ~/sm/gcc/;
+#git clone https://git.linaro.org/toolchain/gcc-new.git -b linaro-4_9-branch ~/sm/gcc/gcc-UBER
+#cp -R ~/linaro/binutils/binutils-current ~/sm/binutils;
+#cp -R ~/linaro/gdb/gdb-current ~/sm/gdb;
+# Build LinaroMod
+cd ~/sm/build-scripts
+echo "Building LinaroMod"
 
-	# Build LinaroMod
-	cd ~/sm/build-scripts
-	echo "Building LinaroMod"
+# Attempt to speed up compilation by linking everything to /tmp filesystem
+# Also find toolchain root
+rm -rf /tmp/sm-tc;
 
-	# Build PATH
-	export BUILD_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
-	
-	# Make a clean build
-	if [ -e Makefile ];
-	then
-    	 make $MAKE_FLAGS clean;
-    	 make $MAKE_FLAGS distclean;
-	fi;
+cd ../;
+export TOOLCHAIN_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+cd /tmp && ln -s $TOOLCHAIN_ROOT /tmp/sm-tc && cd /tmp/sm-tc;
 
-	# Remove all untracked files and directories in git
-	if [ -d expat-2.0.1 ];
-	then
-    	 rm -rf expat-2.0.1;
-	fi;
-	if [ -d gmp-gnu ];
-	then
-   	 rm -rf gmp-gnu;
-	fi;
+export TOOLCHAIN_ROOT_SYMBOLIC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
 
-	export PREFIX_PATH=~/tmp/arm-eabi-4.9;
-	export PREFIX=--prefix=$PREFIX_PATH;
+# Make sure gcc is on the right remote branch 4.9.x
+cd $TOOLCHAIN_ROOT_SYMBOLIC/gcc/gcc-SaberMod && rm -rf * && git reset --hard && git fetch https://git.linaro.org/toolchain/gcc-new.git linaro-4_9-branch && git checkout FETCH_HEAD && cd $TOOLCHAIN_ROOT_SYMBOLIC/build;
 
-	if [ -d "$PREFIX_PATH" ];
-	then
-   	 rm -rf $PREFIX_PATH;
-      	 mkdir -p $PREFIX_PATH;
-	else
-   	 mkdir -p $PREFIX_PATH;
-	fi;
+# Build PATH
+export BUILD_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
 
-	# sysroot
-	cd ../sysroot && rm -rf * && git reset --hard && git fetch sm gcc-4.9 && git checkout FETCH_HEAD && cd ../build;
-	export SYSROOT_SRC_PATH=../sysroot/arch-arm;
-	export SYSROOT_DEST_PATH=$PREFIX_PATH;
-	cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
-	export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH/arch-arm;
-	cd ~/sm/build;
+# Make a clean build
+if [ -e Makefile ];
+then
+    make $MAKE_FLAGS clean;
+    make $MAKE_FLAGS distclean;
+fi;
 
-	#Build Configuration
-	./configure $PREFIX $SYSROOT --target=arm-eabi --host=x86_64-linux-gnu --build=x86_64-linux-gnu --program-transform-name='s&^&arm-eabi-&' --with-gcc-version=UBER --with-pkgversion="UBER-Linaro-4.9.3_arm+graphite" --with-binutils-version=current --with-cloog-version=$SET_CLOOG_VERSION --with-isl-version=$SET_ISL_VERSION --with-gmp-version=gnu --with-mpfr-version=gnu --with-mpc-version=gnu --with-gdb-version=current --disable-docs --disable-nls --disable-option-checking --disable-bootstrap "--enable-eh-frame-hdr-for-static" --enable-graphite=yes -enable-threads --enable-ld=default --with-host-libstdcxx='-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm' 
+# Remove all untracked files and directories in git
+if [ -d gmp-gnu ];
+then
+    rm -rf gmp-gnu;
+fi;
 
- 	#Build the toolchain
-	make $MAKE_FLAGS;
+export PREFIX_PATH=~/hyper/LinaroMod-arm-eabi-4.9;
+export PREFIX=--prefix=$PREFIX_PATH;
 
-	#Install the toolchain (twice)
-	make install && make install;
+if [ -d "$PREFIX_PATH" ];
+then
+    rm -rf $PREFIX_PATH;
+    mkdir -p $PREFIX_PATH;
+else
+    mkdir -p $PREFIX_PATH;
+fi;
 
-	GCC_INSTALLED=$PREFIX_PATH/bin/aarch64-linux-android-gcc;
+export GCC_INSTALLED=$PREFIX_PATH/bin/arm-eabi-gcc;
 
-	# Did we make it?
-	if [ -e $GCC_INSTALLED ];
-	then
-  	  echo "";
-	else
-	    ./build-failed;
-	fi;
+# sysroot
+cd $TOOLCHAIN_ROOT_SYMBOLIC/sysroot && rm -rf * && git reset --hard && git fetch sm gcc-4.9 && git checkout FETCH_HEAD && cd $BUILD_PATH;
+export SYSROOT_SRC_PATH=$TOOLCHAIN_ROOT_SYMBOLIC/sysroot/arch-arm;
+export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
+cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
+export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH;
 
-	cd ../build-scripts;
+# Build and install cloog, isl and osl libraries into the toolchain sysroot environment.
+
+# GMP
+cd $TOOLCHAIN_ROOT_SYMBOLIC/gmp/gmp-gnu;
+export GMP_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+
+# CLOOG
+export CLOOG_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export CLOOG_PREFIX=--prefix=$CLOOG_PREFIX_PATH;
+
+# Cloog Build Configuration
+cd $TOOLCHAIN_ROOT_SYMBOLIC/cloog/cloog-$SET_CLOOG_VERSION && ./configure $CLOOG_PREFIX --with-isl=bundled --with-osl=bundled --with-gmp=system;
+
+make $MAKE_FLAGS;
+make install;
+
+# cleanup
+make $MAKE_FLAGS clean;
+make $MAKE_FLAGS distclean;
+
+# untracked files
+rm -rf cloog-isl-uninstalled.pc cloog-isl-uninstalled.sh cloog-isl.pc cloog-isl.pc.in doc/gitversion.texi version.h isl/gitversion.h isl/include/isl/stdint.h isl/isl-uninstalled.pc isl/isl-uninstalled.sh isl/isl.pc isl/isl.pc.in;
+
+git reset --hard;
+
+# make libs available for ld
+export SYSROOT_LIB_PATH=$SYSROOT_DEST_PATH/usr/lib;
+export LD_LIBRARY_PATH=$SYSROOT_LIB_PATH;
+
+export CLOOG_INSTALLED=$SYSROOT_LIB_PATH/libcloog-isl.so.4
+export SET_TARGET_BUILD=CLOOG;
+
+cd $BUILD_PATH;
+
+# Did we make it?
+if [ -e $CLOOG_INSTALLED ];
+then
+
+    # Make a system link for older version of libisl using the newer version for older systems
+    cd $SYSROOT_LIB_PATH && ln -s libisl.so.13.1.0 libisl.so.10 && cd $BUILD_PATH;
+    ./build-success;
+    sleep 5;
+
+    # GCC Build Configuration
+    ./configure $PREFIX $SYSROOT --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=arm-eabi --program-transform-name='s&^&arm-eabi-&' --with-gcc-version=UBER --with-pkgversion='LinaroMod-4.9.x_arm-graphite' --with-binutils-version=current --with-gmp-version=gnu --with-mpfr-version=gnu --with-mpc-version=gnu --with-gdb-version=current --with-cloog-version=$SET_CLOOG_VERSION --with-isl-version=$SET_ISL_VERSION --enable-graphite=yes --enable-plugins --enable-threads --enable-ld=default --disable-option-checking --with-host-libstdcxx='-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm' --disable-bootstrap "--enable-eh-frame-hdr-for-static";
+
+    # Build the toolchain
+    make $MAKE_FLAGS;
+
+    # Install the toolchain (twice)
+    make install && make install;
+
+    export SET_TARGET_BUILD=GCC;
+
+    # Did we make it?
+    if [ -e $GCC_INSTALLED ];
+    then
+        ./build-success;
+    else
+        ./build-failed;
+    fi;
+else
+    ./build-failed;
+fi;
+
+cd $TOOLCHAIN_ROOT/build-scripts;
+
 }
 
 upload_linaromod(){
@@ -325,7 +383,7 @@ upload_sabernaro(){
 	touch README.mkdn;
 	echo " SaberNaro ARM-EABI 4.9
 ----------------------
-This toolchain was built using SaberMod GCC, but in a Linaro build environment (linaro binutils, gdb, cloog, etc.) with the exception of using the latest ISL. This is built opposite of my LinaroMod toolchain." >> README.mkdn;
+This toolchain was built using SaberMod GCC, but with Linaro resources (linaro binutils, gdb, cloog, etc.) with the exception of using the latest ISL. This is built opposite of my LinaroMod toolchain." >> README.mkdn;
 
 	# Upload SaberNaro to GitHub
 	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/SaberNaro-arm-eabi-4.9.git master;
@@ -334,8 +392,8 @@ This toolchain was built using SaberMod GCC, but in a Linaro build environment (
 cleanup(){
 	echo "Clean up time!"
 	#Clean Up Time!
-	rm -rf ~/sm/gcc/gcc-UBER;
+#	rm -rf ~/sm/gcc/gcc-UBER;
 	rm -rf ~/linaro/gcc/gcc-SaberMod;
-	rm -rf ~/sm/binutils/binutils-linaro;
-	rm -rf ~/sm/gdb/gdb-linaro;
+	rm -rf ~/sm/binutils/binutils-current;
+	rm -rf ~/sm/gdb/gdb-current;
 }
