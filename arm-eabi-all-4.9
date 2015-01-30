@@ -144,13 +144,12 @@ upload_linaro(){
 
 build_linaromod(){
 #Copy files for LinaroMod
+cd sm/gcc/gcc-Linaro && git fetch https://git.linaro.org/toolchain/gcc-new.git linaro-4_9-branch && git checkout FETCH_HEAD
 echo  "Copying files for LinaroMod";
 #cp -R ~/linaro/gcc/gcc-UBER ~/sm/gcc/;
-#git clone https://git.linaro.org/toolchain/gcc-new.git -b linaro-4_9-branch ~/sm/gcc/gcc-UBER
-#cp -R ~/linaro/binutils/binutils-current ~/sm/binutils;
-#cp -R ~/linaro/gdb/gdb-current ~/sm/gdb;
+
 # Build LinaroMod
-cd ~/sm/build-scripts
+cd ../../build-scripts
 echo "Building LinaroMod"
 
 # Attempt to speed up compilation by linking everything to /tmp filesystem
@@ -246,7 +245,7 @@ then
     sleep 5;
 
     # GCC Build Configuration
-    ./configure $PREFIX $SYSROOT --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=arm-eabi --program-transform-name='s&^&arm-eabi-&' --with-gcc-version=UBER --with-pkgversion='LinaroMod-4.9.x_arm-graphite' --with-binutils-version=current --with-gmp-version=gnu --with-mpfr-version=gnu --with-mpc-version=gnu --with-gdb-version=current --with-cloog-version=$SET_CLOOG_VERSION --with-isl-version=$SET_ISL_VERSION --enable-graphite=yes --enable-plugins --enable-threads --enable-ld=default --disable-option-checking --with-host-libstdcxx='-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm' --disable-bootstrap "--enable-eh-frame-hdr-for-static";
+    ./configure $PREFIX $SYSROOT --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=arm-eabi --program-transform-name='s&^&arm-eabi-&' --with-gcc-version=Linaro --with-pkgversion='LinaroMod-4.9.x_arm-graphite' --with-binutils-version=android --with-gmp-version=gnu --with-mpfr-version=gnu --with-mpc-version=gnu --with-gdb-version=android --with-cloog-version=$SET_CLOOG_VERSION --with-isl-version=$SET_ISL_VERSION --enable-graphite=yes --enable-plugins --enable-threads --enable-ld=default --disable-option-checking --with-host-libstdcxx='-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm' --disable-bootstrap "--enable-eh-frame-hdr-for-static";
 
     # Build the toolchain
     make $MAKE_FLAGS;
@@ -383,7 +382,7 @@ upload_sabernaro(){
 	touch README.mkdn;
 	echo " SaberNaro ARM-EABI 4.9
 ----------------------
-This toolchain was built using SaberMod GCC, but with Linaro resources (linaro binutils, gdb, cloog, etc.) with the exception of using the latest ISL. This is built opposite of my LinaroMod toolchain." >> README.mkdn;
+This toolchain was built using SaberMod GCC, but in a Linaro build environment (linaro binutils, gdb, cloog, etc.) with the exception of using the latest ISL. This is built opposite of my LinaroMod toolchain." >> README.mkdn;
 
 	# Upload SaberNaro to GitHub
 	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/SaberNaro-arm-eabi-4.9.git master;
@@ -392,8 +391,5 @@ This toolchain was built using SaberMod GCC, but with Linaro resources (linaro b
 cleanup(){
 	echo "Clean up time!"
 	#Clean Up Time!
-#	rm -rf ~/sm/gcc/gcc-UBER;
 	rm -rf ~/linaro/gcc/gcc-SaberMod;
-	rm -rf ~/sm/binutils/binutils-current;
-	rm -rf ~/sm/gdb/gdb-current;
 }
