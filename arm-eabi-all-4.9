@@ -16,7 +16,7 @@
 #
 # This scripts is to build all of my arm-eabi toolchains and upload them to GitHub.
 #
-export SET_GCC_VERSION=4.9.3 && export SET_CLOOG_VERSION=0.18.3 && export SET_ISL_VERSION=0.14 && export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' && export DATE=`date +%Y-%m-%d` && export target_cpu=arm && export TARGET_CPU_VARIANT=krait;
+export SET_SM_GCC_VERSION=4.9.3 && export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' && export DATE=`date +%Y-%m-%d` && export target_cpu=cortex_a15 && export TARGET_CPU_VARIANT=krait;
 JOBS="$(cat /proc/cpuinfo | grep -c processor)";
 OPT_JOBS=$(bc <<< "($JOBS-1)*2")
 MAKE_FLAGS="-j$OPT_JOBS";
@@ -30,7 +30,6 @@ MAKE_FLAGS="-j$OPT_JOBS";
 ############################################################
 export CPU=cortex_a15;
 export FPU=neon-vfpv4;
-export MODE=marm;
 export linaro_dir=~/linaro/build;
 export sm_dir=~/sm/build-scripts;
 ###################
@@ -41,6 +40,7 @@ build linaro(){
 cd $linaro_dir;
 echo "Building Linaro";
 export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.9-branch";
+export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current
 export GCC=Linaro;
 export VERSION=Linaro;
 build;
@@ -50,6 +50,7 @@ build linaromod(){
 cd $sm_dir;
 echo "Building LinaroMod";
 export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.9-branch";
+export SET_CLOOG_VERSION=0.18.3 && export SET_ISL_VERSION=0.14;
 export GCC=Linaro;
 export VERSION=LinaroMod;
 export GCC2=SaberMod;
@@ -59,7 +60,8 @@ build;
 build sabernaro(){
 cd $linaro_dir;
 echo "Building SaberNaro";
-export GIT_FETCH="git fetch https://github.com/SaberMod/GCC_SaberMod $SET_GCC_VERSION";
+export GIT_FETCH="git fetch https://github.com/SaberMod/GCC_SaberMod $SET_SM_GCC_VERSION";
+export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current;
 export GCC=SaberMod;
 export GCC2=Linaro;
 export VERSION=SaberNaro;
