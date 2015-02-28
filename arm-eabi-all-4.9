@@ -43,7 +43,7 @@ export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.9-
 export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current
 export GCC=Linaro;
 export VERSION=Linaro;
-build;
+build; &> /dev/null
 }
 
 build linaromod(){
@@ -54,7 +54,7 @@ export SET_CLOOG_VERSION=0.18.3 && export SET_ISL_VERSION=0.14;
 export GCC=Linaro;
 export VERSION=LinaroMod;
 export GCC2=SaberMod;
-build;
+build; &> /dev/null
 }
 
 build sabernaro(){
@@ -65,7 +65,7 @@ export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current;
 export GCC=SaberMod;
 export GCC2=Linaro;
 export VERSION=SaberNaro;
-build;
+build; &> /dev/null
 }
 
 build(){
@@ -201,5 +201,5 @@ upload(){
 ----------------------
 This toolchain was built using $GCC GCC, but in a $GCC2 build environment (linaro binutils, gdb, cloog, etc.) with the exception of using the latest ISL. This is built opposite of my LinaroMod toolchain." >> README.mkdn;
 
-	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/$VERSION-arm-eabi-4.9.git master;
+	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/$VERSION-arm-eabi-4.9.git master; &> /dev/null
 }
