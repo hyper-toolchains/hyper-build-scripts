@@ -106,7 +106,7 @@ then
     rm -rf gmp-gnu;
 fi;
 
-export PREFIX_PATH=~/hyper/$VERSION-arm-eabi-4.9-$DATE;
+export PREFIX_PATH=~/hyper/$VERSION-arm-eabi-4.8-$DATE;
 export PREFIX=--prefix=$PREFIX_PATH;
 
 if [ -d "$PREFIX_PATH" ];
@@ -120,7 +120,7 @@ fi;
 export GCC_INSTALLED=$PREFIX_PATH/bin/arm-eabi-gcc;
 
 # sysroot
-cd $TOOLCHAIN_ROOT_SYMBOLIC/sysroot && rm -rf * && git reset --hard && git fetch sm gcc-4.9 && git checkout FETCH_HEAD && cd $BUILD_PATH;
+cd $TOOLCHAIN_ROOT_SYMBOLIC/sysroot && rm -rf * && git reset --hard && git fetch sm gcc-4.8 && git checkout FETCH_HEAD && cd $BUILD_PATH;
 export SYSROOT_SRC_PATH=$TOOLCHAIN_ROOT_SYMBOLIC/sysroot/arch-arm;
 export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
 cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
