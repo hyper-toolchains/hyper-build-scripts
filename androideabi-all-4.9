@@ -1,0 +1,209 @@
+#!/bin/bash
+# Copyright (C) 2015 Joe Maples
+# Copyright (C) 2015 The SaberMod Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# This scripts is to build all of my androideabi toolchains and upload them to GitHub.
+#
+export SET_SM_GCC_VERSION=4.9.3 && export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' && export DATE=`date +%Y-%m-%d` && export target_cpu=cortex_a15 && export TARGET_CPU_VARIANT=krait;
+JOBS="$(cat /proc/cpuinfo | grep -c processor)";
+OPT_JOBS=$(bc <<< "($JOBS-1)*2")
+MAKE_FLAGS="-j$OPT_JOBS";
+
+############################################################
+############################################################
+#####                                                  #####
+#####                 TUNEABLE VARIABLES               #####
+#####                                                  #####
+############################################################
+############################################################
+export CPU=cortex-a15;
+export FPU=neon-vfpv4;
+export linaro_dir=~/linaro/build;
+export sm_dir=~/sm/build-scripts;
+###################
+## END TUNEABLES ##
+###################
+
+build_linaro(){
+cd $linaro_dir;
+echo "Building Linaro";
+export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.8-branch";
+export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current
+export GCC=Linaro-4.9;
+export VERSION=Linaro;
+export GCC2=Linaro
+export EXTRA_VER=current
+export EXTRA_VER2=current
+build; &> /dev/null
+}
+
+build_linaromod(){
+cd $sm_dir;
+echo "Building LinaroMod";
+export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.8-branch";
+export SET_CLOOG_VERSION=0.18.3 && export SET_ISL_VERSION=0.14;
+export GCC=Linaro;
+export VERSION=LinaroMod;
+export GCC2=SaberMod;
+export EXTRA_VER=gnu
+export EXTRA_VER2=android
+build; &> /dev/null
+}
+
+build_sabernaro(){
+cd $linaro_dir;
+echo "Building SaberNaro";
+export GIT_FETCH="git fetch https://github.com/SaberMod/GCC_SaberMod $SET_SM_GCC_VERSION";
+export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current;
+export GCC=SaberMod;
+export GCC2=Linaro;
+export VERSION=SaberNaro;
+export EXTRA_VER=current
+export EXTRA_VER2=current
+build; &> /dev/null
+}
+
+build(){
+# Attempt to speed up compilation by linking everything to /tmp filesystem
+# Also find toolchain root
+if [ -e /tmp/$VERSION ];
+then
+    rm -rf /tmp/$VERSION;
+fi;
+cd ../;
+export TOOLCHAIN_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+cd /tmp && ln -s $TOOLCHAIN_ROOT /tmp/$VERSION && cd /tmp/$VERSION;
+
+export TOOLCHAIN_ROOT_SYMBOLIC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+
+# Make sure gcc is on the right remote branch 4.9.x
+cd $TOOLCHAIN_ROOT_SYMBOLIC/gcc/gcc-$GCC && rm -rf * && git reset --hard && $GIT_FETCH && git checkout FETCH_HEAD && cd $TOOLCHAIN_ROOT_SYMBOLIC/build;
+
+# Build PATH
+export BUILD_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+
+# Make a clean build
+if [ -e Makefile ];
+then
+    make $MAKE_FLAGS clean;
+    make $MAKE_FLAGS distclean;
+fi;
+
+# Remove all untracked files and directories in git
+if [ -d gmp-gnu ];
+then
+    rm -rf gmp-gnu;
+fi;
+
+export PREFIX_PATH=~/hyper/$VERSION-arm-eabi-4.9-$DATE;
+export PREFIX=--prefix=$PREFIX_PATH;
+
+if [ -d "$PREFIX_PATH" ];
+then
+    rm -rf $PREFIX_PATH;
+    mkdir -p $PREFIX_PATH;
+else
+    mkdir -p $PREFIX_PATH;
+fi;
+
+export GCC_INSTALLED=$PREFIX_PATH/bin/arm-eabi-gcc;
+
+# sysroot
+cd $TOOLCHAIN_ROOT_SYMBOLIC/sysroot && rm -rf * && git reset --hard && git fetch sm gcc-4.9 && git checkout FETCH_HEAD && cd $BUILD_PATH;
+export SYSROOT_SRC_PATH=$TOOLCHAIN_ROOT_SYMBOLIC/sysroot/arch-arm;
+export SYSROOT_DEST_PATH=$PREFIX_PATH/arch-arm;
+cp -R $SYSROOT_SRC_PATH -f $SYSROOT_DEST_PATH;
+export SYSROOT=--with-sysroot=$SYSROOT_DEST_PATH;
+
+# Build and install cloog, isl and osl libraries into the toolchain sysroot environment.
+
+# GMP
+cd $TOOLCHAIN_ROOT_SYMBOLIC/gmp/gmp-gnu;
+export GMP_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )";
+
+# CLOOG
+export CLOOG_PREFIX_PATH=$SYSROOT_DEST_PATH/usr;
+export CLOOG_PREFIX=--prefix=$CLOOG_PREFIX_PATH;
+
+# Cloog Build Configuration
+cd $TOOLCHAIN_ROOT_SYMBOLIC/cloog/cloog-$SET_CLOOG_VERSION && ./configure $CLOOG_PREFIX --with-isl=bundled --with-osl=bundled --with-gmp=system --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=arm-linux-androideabi;
+
+make $MAKE_FLAGS;
+make install;
+
+# cleanup
+make $MAKE_FLAGS clean;
+make $MAKE_FLAGS distclean;
+
+# untracked files
+rm -rf cloog-isl-uninstalled.pc cloog-isl-uninstalled.sh cloog-isl.pc cloog-isl.pc.in doc/gitversion.texi version.h isl/gitversion.h isl/include/isl/stdint.h isl/isl-uninstalled.pc isl/isl-uninstalled.sh isl/isl.pc isl/isl.pc.in;
+
+git reset --hard;
+
+# make libs available for ld
+export SYSROOT_LIB_PATH=$SYSROOT_DEST_PATH/usr/lib;
+export LD_LIBRARY_PATH=$SYSROOT_LIB_PATH;
+
+export CLOOG_INSTALLED=$SYSROOT_LIB_PATH/libcloog-isl.so.4
+export SET_TARGET_BUILD=CLOOG;
+
+cd $BUILD_PATH;
+
+# Did we make it?
+if [ -e $CLOOG_INSTALLED ];
+then
+
+    # Make a system link for older version of libisl using the newer version for older systems
+    cd $SYSROOT_LIB_PATH && ln -s libisl.so.13.1.0 libisl.so.10 && cd $BUILD_PATH;
+    ./build-success;
+    sleep 5;
+
+    # GCC Build Configuration
+    ./configure $PREFIX $SYSROOT --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=arm-linux-androideabi --program-transform-name='s&^&arm-linux-androideabi-&' --with-gcc-version=$GCC --with-pkgversion='Hyper-$VERSION-4.9.x_androideabi-graphite' --with-binutils-version=$EXTRA_VER2 --with-gmp-version=$EXTRA_VER --with-mpfr-version=$EXTRA_VER --with-mpc-version=$EXTRA_VER --with-gdb-version=$EXTRA_VER2 --with-cloog-version=$SET_CLOOG_VERSION --with-isl-version=$SET_ISL_VERSION --enable-graphite=yes --enable-plugins --enable-threads --enable-ld=default --disable-option-checking --with-host-libstdcxx='-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm' --disable-bootstrap "--enable-eh-frame-hdr-for-static" --with-cpu=$CPU --with-tune=$CPU --with-fpu=$FPU --disable-libsanitizer;
+
+    # Build the toolchain
+    make $MAKE_FLAGS;
+
+    # Install the toolchain (twice)
+    make install && make install;
+
+    export SET_TARGET_BUILD=GCC;
+
+    # Did we make it?
+    if [ -e $GCC_INSTALLED ];
+    then
+        ./build-success;
+        cp $sm_dir/.gitignore $PREFIX_PATH/.gitignore
+    else
+        ./build-failed;
+    fi;
+else
+    ./build-failed;
+fi;
+
+cd ~;
+}
+
+upload(){
+	echo "Uploading $VERSION";
+	# Add README
+	cd $PREFIX_PATH;
+	touch README.mkdn;
+	echo " $VERSION ANDROIDEABI 4.9
+----------------------
+This toolchain was built using $GCC GCC in a $GCC2 build environment (binutils, gdb, cloog, etc.) with the exception of using the latest ISL, Cloog, and OSL, for better Graphite performace." >> README.mkdn;
+
+	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/$VERSION-androideabi-4.9.git master; &> /dev/null
+}
