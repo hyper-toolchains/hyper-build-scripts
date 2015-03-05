@@ -36,7 +36,7 @@ export sm_dir=~/sm/build-scripts;
 ## END TUNEABLES ##
 ###################
 
-build linaro(){
+linaro(){
 cd $linaro_dir;
 echo "Building Linaro";
 export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.8-branch";
@@ -48,7 +48,7 @@ export EXTRA_VER2=current
 build; &> /dev/null
 }
 
-build linaromod(){
+linaromod(){
 cd $sm_dir;
 echo "Building LinaroMod";
 export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.8-branch";
@@ -61,7 +61,7 @@ export EXTRA_VER2=android
 build; &> /dev/null
 }
 
-build sabernaro(){
+sabernaro(){
 cd $linaro_dir;
 echo "Building SaberNaro";
 export GIT_FETCH="git fetch https://github.com/SaberMod/GCC_SaberMod $SET_SM_GCC_VERSION";
@@ -196,13 +196,13 @@ cd ~;
 }
 
 upload(){
-	echo "Uploading SaberNaro";
+	echo "Uploading $VERSION";
 	# Add README
 	cd $PREFIX_PATH;
 	touch README.mkdn;
 	echo " $VERSION ANDROIDEABI 4.8
 ----------------------
-This toolchain was built using $GCC GCC, but in a $GCC2 build environment (linaro binutils, gdb, cloog, etc.) with the exception of using the latest ISL. This is built opposite of my LinaroMod toolchain." >> README.mkdn;
+This toolchain was built using $GCC GCC a $GCC2 build environment (binutils, gdb, cloog, etc.) with the exception of using the latest ISL, Cloog, and OSL, for better Graphite performance." >> README.mkdn;
 
 	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/$VERSION-androideabi-4.8.git master; &> /dev/null
 }
