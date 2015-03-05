@@ -28,7 +28,7 @@ MAKE_FLAGS="-j$OPT_JOBS";
 #####                                                  #####
 ############################################################
 ############################################################
-export CPU=cortex_a15;
+export CPU=cortex-a15;
 export FPU=neon-vfpv4;
 export linaro_dir=~/linaro/build;
 export sm_dir=~/sm/build-scripts;
@@ -36,19 +36,20 @@ export sm_dir=~/sm/build-scripts;
 ## END TUNEABLES ##
 ###################
 
-linaro(){
+build_linaro(){
 cd $linaro_dir;
 echo "Building Linaro";
 export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.8-branch";
 export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current
-export GCC=Linaro;
+export GCC=Linaro-4.8;
 export VERSION=Linaro;
+export GCC2=Linaro
 export EXTRA_VER=current
 export EXTRA_VER2=current
 build; &> /dev/null
 }
 
-linaromod(){
+build_linaromod(){
 cd $sm_dir;
 echo "Building LinaroMod";
 export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-4.8-branch";
@@ -61,7 +62,7 @@ export EXTRA_VER2=android
 build; &> /dev/null
 }
 
-sabernaro(){
+build_sabernaro(){
 cd $linaro_dir;
 echo "Building SaberNaro";
 export GIT_FETCH="git fetch https://github.com/SaberMod/GCC_SaberMod $SET_SM_GCC_VERSION";
@@ -170,7 +171,7 @@ then
     sleep 5;
 
     # GCC Build Configuration
-    ./configure $PREFIX $SYSROOT --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=arm-linux-androideabi --program-transform-name='s&^&arm-linux-androideabi-&' --with-gcc-version=$GCC --with-pkgversion='Hyper-$VERSION-4.8.x_androideabi-graphite' --with-binutils-version=$EXTRA_VER2 --with-gmp-version=$EXTRA_VER --with-mpfr-version=$EXTRA_VER --with-mpc-version=$EXTRA_VER --with-gdb-version=$EXTRA_VER2 --with-cloog-version=$SET_CLOOG_VERSION --with-isl-version=$SET_ISL_VERSION --enable-graphite=yes --enable-plugins --enable-threads --enable-ld=default --disable-option-checking --with-host-libstdcxx='-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm' --disable-bootstrap "--enable-eh-frame-hdr-for-static" --with-cpu=$CPU --with-tune=$CPU --with-fpu=$FPU;
+    ./configure $PREFIX $SYSROOT --host=x86_64-linux-gnu --build=x86_64-linux-gnu --target=arm-linux-androideabi --program-transform-name='s&^&arm-linux-androideabi-&' --with-gcc-version=$GCC --with-pkgversion='Hyper-$VERSION-4.8.x_androideabi-graphite' --with-binutils-version=$EXTRA_VER2 --with-gmp-version=$EXTRA_VER --with-mpfr-version=$EXTRA_VER --with-mpc-version=$EXTRA_VER --with-gdb-version=$EXTRA_VER2 --with-cloog-version=$SET_CLOOG_VERSION --with-isl-version=$SET_ISL_VERSION --enable-graphite=yes --enable-plugins --enable-threads --enable-ld=default --disable-option-checking --with-host-libstdcxx='-static-libgcc -Wl,-Bstatic,-lstdc++,-Bdynamic -lm' --disable-bootstrap "--enable-eh-frame-hdr-for-static" --with-cpu=$CPU --with-tune=$CPU --with-fpu=$FPU --disable-libsanitizer;
 
     # Build the toolchain
     make $MAKE_FLAGS;
@@ -202,7 +203,7 @@ upload(){
 	touch README.mkdn;
 	echo " $VERSION ANDROIDEABI 4.8
 ----------------------
-This toolchain was built using $GCC GCC a $GCC2 build environment (binutils, gdb, cloog, etc.) with the exception of using the latest ISL, Cloog, and OSL, for better Graphite performance." >> README.mkdn;
+This toolchain was built using $GCC GCC in a $GCC2 build environment (binutils, gdb, cloog, etc.) with the exception of using the latest ISL, Cloog, and OSL, for better Graphite performace." >> README.mkdn;
 
 	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/$VERSION-androideabi-4.8.git master; &> /dev/null
 }
