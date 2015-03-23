@@ -39,7 +39,7 @@ export sm_dir=~/sm/build-scripts;
 build linaro(){
 cd $linaro_dir;
 echo "Building Linaro";
-export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-5.0-branch";
+export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git master";
 export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current
 export GCC=Linaro;
 export VERSION=Linaro;
@@ -49,7 +49,7 @@ build; &> /dev/null
 build linaromod(){
 cd $sm_dir;
 echo "Building LinaroMod";
-export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git linaro-5.0-branch";
+export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git master";
 export SET_CLOOG_VERSION=0.18.3 && export SET_ISL_VERSION=0.14;
 export GCC=Linaro;
 export VERSION=LinaroMod;
@@ -226,6 +226,7 @@ done
 sed -i 's/project/   */g' $Changelog
 
 cp $Changelog $PREFIX_PATH/
+rm -rf $Changelog
 }
 
 upload(){
