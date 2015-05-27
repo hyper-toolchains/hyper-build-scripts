@@ -16,7 +16,7 @@
 #
 # This scripts is to build all of my arm-eabi toolchains and upload them to GitHub.
 #
-export SET_SM_GCC_VERSION=5.0.0 && export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' && export DATE=`date +%Y-%m-%d` && export target_cpu=cortex_a15 && export TARGET_CPU_VARIANT=krait;
+export SET_SM_GCC_VERSION=5.1.0 && export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01' && export DATE=`date +%Y-%m-%d` && export target_cpu=cortex_a15 && export TARGET_CPU_VARIANT=krait;
 JOBS="$(cat /proc/cpuinfo | grep -c processor)";
 OPT_JOBS=$(bc <<< "($JOBS-1)*2")
 MAKE_FLAGS="-j$OPT_JOBS";
@@ -39,7 +39,7 @@ export sm_dir=~/sm/build-scripts;
 build linaro(){
 cd $linaro_dir;
 echo "Building Linaro";
-export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc.git master";
+export GIT_FETCH="git fetch https://git.linaro.org/toolchain/gcc-mirror.git gcc-5-branch";
 export SET_CLOOG_VERSION=current && export SET_ISL_VERSION=current
 export GCC=Linaro;
 export VERSION=Linaro;
@@ -236,7 +236,7 @@ upload(){
 	touch README.mkdn;
 	echo " $VERSION ARM-EABI 5.0
 ----------------------
-This toolchain was built using $GCC GCC, but in a $GCC2 build environment (linaro binutils, gdb, cloog, etc.) with the exception of using the latest ISL. This is built opposite of my LinaroMod toolchain." >> README.mkdn;
+This toolchain was built using $GCC GCC, but in a $GCC2 build environment ($GCC2 binutils, gdb, cloog, etc.) with the exception of using the latest ISL." >> README.mkdn;
 
-	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://github.com/hyper-toolchains/$VERSION-arm-eabi-5.0.git master; &> /dev/null
+	git init && git add -A && git commit -m "Update build to $DATE" -s && git push -f https://bitbucket.com/hyper-toolchains/$VERSION-arm-eabi-5.1.git master; &> /dev/null
 }
